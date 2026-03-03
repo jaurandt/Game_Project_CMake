@@ -124,8 +124,6 @@ public:
 		m_values[2][0] = -fx;  m_values[2][1] = -fy;  m_values[2][2] = -fz;  m_values[2][3] =  (fx * eye.x + fy * eye.y + fz * eye.z);
 		m_values[3][0] = 0.0f; m_values[3][1] = 0.0f; m_values[3][2] = 0.0f; m_values[3][3] = 1.0f;
 	}
-	
-	// <-- 17:12 #6 -->
 
 	~Mat4()
 	{

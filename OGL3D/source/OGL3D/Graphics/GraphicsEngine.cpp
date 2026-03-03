@@ -133,10 +133,8 @@ void GraphicsEngine::drawTriangles(const TriangleType& triangleType, unsigned in
     glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    glDrawElements(glTriType, vertexCount, GL_UNSIGNED_INT, 0);
     //glDrawArrays(glTriType, offset, vertexCount);
-
-
 }
 
 /*************************

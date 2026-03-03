@@ -62,92 +62,31 @@ void Game::onCreate()
 	*/
 	
 	const float vertices[] = {
-		-0.5f, -0.5f, 0.5f, // 0
+		-0.5f, -0.5f,  0.5f, // 0
 		 1.0f,  0.0f,  0.0f,
 
-		-0.5f,  0.5f, 0.5f, // 1
+		-0.5f,  0.5f,  0.5f, // 1
 		 1.0f,  0.0f,  0.0f,
 
-		 0.5f,  0.5f, 0.5f, // 2
+		 0.5f,  0.5f,  0.5f, // 2
 		 1.0f,  0.0f,  0.0f,
 
-		 0.5f, -0.5f, 0.5f, // 3
+		 0.5f, -0.5f,  0.5f, // 3
 		 1.0f,  0.0f,  0.0f,
 
-		 0.5f, -0.5f,  -0.5f, // 4
+		 0.5f, -0.5f, -0.5f, // 4
 		 0.0f,  1.0f,  0.0f,
 
-		 0.5f,  0.5f,  -0.5f, // 5
+		 0.5f,  0.5f, -0.5f, // 5
 		 0.0f,  1.0f,  0.0f,
 
-		-0.5f,  0.5f,  -0.5f, // 6
+		-0.5f,  0.5f, -0.5f, // 6
 		 0.0f,  1.0f,  0.0f,
 
-		-0.5f, -0.5f,  -0.5f,  // 7
+		-0.5f, -0.5f, -0.5f,  // 7
 		 0.0f,  1.0f,  0.0f
 
 	};
-	
-	/*
-	const float vertices[] = {
-		// Face 1 - Red (triangles: 4,5,7 and 7,6,5)
-		-0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
-
-		 // Face 2 - Green (triangles: 1,5,6 and 6,2,1)
-		  0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 0.0f,
-		  0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
-		  0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
-		  0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
-		  0.5f,  0.5f, -0.5f,  0.0f, 1.0f, 0.0f,
-		  0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 0.0f,
-
-		  // Face 3 - Blue (triangles: 1,0,3 and 3,2,1)
-		   0.5f, -0.5f, -0.5f,  0.0f, 0.0f, 1.0f,
-		  -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, 1.0f,
-		  -0.5f,  0.5f, -0.5f,  0.0f, 0.0f, 1.0f,
-		  -0.5f,  0.5f, -0.5f,  0.0f, 0.0f, 1.0f,
-		   0.5f,  0.5f, -0.5f,  0.0f, 0.0f, 1.0f,
-		   0.5f, -0.5f, -0.5f,  0.0f, 0.0f, 1.0f,
-
-		   // Face 4 - Yellow (triangles: 4,0,7 and 7,3,0)
-		   -0.5f, -0.5f,  0.5f,  1.0f, 1.0f, 0.0f,
-		   -0.5f, -0.5f, -0.5f,  1.0f, 1.0f, 0.0f,
-		   -0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f,
-		   -0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f,
-		   -0.5f,  0.5f, -0.5f,  1.0f, 1.0f, 0.0f,
-		   -0.5f, -0.5f, -0.5f,  1.0f, 1.0f, 0.0f,
-
-		   // Face 5 - Magenta (triangles: 6,7,3 and 3,2,6)
-			0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f,
-		   -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f,
-		   -0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
-		   -0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
-			0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
-			0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f,
-
-			// Face 6 - Cyan (triangles: 4,5,0 and 0,1,5)
-			-0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 1.0f,
-			 0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 1.0f,
-			-0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
-			-0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
-			 0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
-			 0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 1.0f
-	};
-
-	const unsigned int indices[] = {
-		2, 1, 0, 5, 4, 3,       // Face 1 - Red (reversed)
-		11, 10, 9, 8, 7, 6,     // Face 2 - Green (reversed)
-		17, 16, 15, 14, 13, 12, // Face 3 - Blue (reversed)
-		23, 22, 21, 20, 19, 18, // Face 4 - Yellow (reversed)
-		29, 28, 27, 26, 25, 24, // Face 5 - Magenta (reversed)
-		35, 34, 33, 32, 31, 30  // Face 6 - Cyan (reversed)
-	};
-	*/
 	
 	const unsigned int indices[] = {
 		0, 3, 2, //front face
@@ -169,7 +108,6 @@ void Game::onCreate()
 		3, 0, 7
 	};
 	
-
 	VertexAttribute polyAttributes[] = {
 		3, // Position
 		3  // Color
@@ -203,7 +141,7 @@ void Game::onCreate()
 	m_projectionMatrix.setPerspective(fovRadians, aspect, 0.01f, 100.0f);
 	
 	m_viewMatrix.setLookAt(
-		Vec4(2.0f, 0.0f, 3.0f, 1.0f), // Eye
+		Vec4(0.0f, 0.0f, 3.0f, 1.0f), // Eye
 		Vec4(0.0f, 0.0f, 0.0f, 1.0f), // Center
 		Vec4(0.0f, 1.0f, 0.0f, 1.0f)  // Up
 	);
@@ -223,13 +161,13 @@ void Game::onUpdate(InputMouse mouse)
 	auto deltaTime = static_cast<float>(elapsedSeconds.count());
 
 	m_scale += 3.14f * deltaTime;
-	auto sinScale = sinf(m_scale);
-	auto cosScale = cosf(m_scale);
+	float sinScale = sinf(m_scale);
+	float cosScale = cosf(m_scale);
 	
 	if (mouse == InputMouse::LeftButtonDown)
 	{
 		m_viewMatrix.setLookAt(
-			Vec4(3.0f * sinScale, 0.0f, 3.0f * cosScale, 1.0f), // Eye
+			Vec4(/*1.0f * sinScale*/ 0.0f, 0.0f, /*3.0f * cosScale*/ 3.0f, 1.0f), // Eye
 			Vec4(0.0f, 0.0f, 0.0f, 1.0f), // Center
 			Vec4(0.0f, 1.0f, 0.0f, 1.0f)  // Up
 		);
@@ -245,8 +183,12 @@ void Game::onUpdate(InputMouse mouse)
 	trans.setTranslation(Vec4(0.0f, 0.0f, 0.0f, 1.0f));
 	worldMatrix *= trans;
 	
+	//trans.setIdentity();
+	//trans.setRotationX(m_scale);
+	//worldMatrix *= trans;
+
 	trans.setIdentity();
-	trans.setRotationX(m_scale);
+	trans.setRotationY(m_scale);
 	worldMatrix *= trans;
 	
 	//worldMatrix.setScale(Vec4(sinScale, sinScale, sinScale, 1.0f));
@@ -259,7 +201,7 @@ void Game::onUpdate(InputMouse mouse)
 	m_graphicsEngine->setVertexArrayObject(m_polygonVAO);
 	m_graphicsEngine->setUniformBuffer(m_uniformBuffer, 0);
 	m_graphicsEngine->setShaderProgram(m_shaderProgram);
-	m_graphicsEngine->drawTriangles(TriangleStrip, 8, 0);
+	m_graphicsEngine->drawTriangles(TriangleList, 36, 0);
 	
 	m_display->present(true);
 }

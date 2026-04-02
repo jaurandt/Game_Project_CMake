@@ -6,8 +6,8 @@
 ShaderProgram::ShaderProgram(const ShaderProgramPath& path)
 {
 	m_programID = glCreateProgram();
-	attach(path.vertexShaderFilePath, VertexShader);
-	attach(path.fragmentShaderFilePath, FragmentShader);
+	attach(path.vertexShaderFilePath, ShaderType::VertexShader);
+	attach(path.fragmentShaderFilePath, ShaderType::FragmentShader);
 	link();
 }
 
@@ -45,11 +45,11 @@ void ShaderProgram::attach(const wchar_t* filePath, ShaderType shaderType)
 	}
 
 	unsigned int shaderID = 0;
-	if (shaderType == VertexShader)
+	if (shaderType == ShaderType::VertexShader)
 	{
 		shaderID = glCreateShader(GL_VERTEX_SHADER);
 	}
-	else if (shaderType == FragmentShader)
+	else if (shaderType == ShaderType::FragmentShader)
 	{
 		shaderID = glCreateShader(GL_FRAGMENT_SHADER);
 	}
@@ -75,7 +75,7 @@ void ShaderProgram::attach(const wchar_t* filePath, ShaderType shaderType)
 	}
 
 	glAttachShader(m_programID, shaderID);
-	m_attachedShaders[shaderType] = shaderID;
+	m_attachedShaders[static_cast<int>(shaderType)] = shaderID;
 }
 
 void ShaderProgram::link()

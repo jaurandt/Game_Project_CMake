@@ -6,6 +6,7 @@
 #include <OGL3D/Graphics/UniformBuffer.h>
 #include <OGL3D/Math/Mat4.h>
 #include <windows.h>
+#include <iostream>
 
 struct UniformData
 {
@@ -14,11 +15,19 @@ struct UniformData
 	Mat4 projection;
 };
 
-Game::Game()
+Game::Game() : m_display(std::make_unique<GWindow>()),
+			   m_graphicsEngine(std::make_unique<GraphicsEngine>()),
+			   m_currentTime(),
+			   m_previousTime(),
+			   m_elapsedSeconds(0.0),
+			   m_projectionMatrix(nullptr),
+			   m_viewMatrix(nullptr),
+			   m_worldMatrix(nullptr),
+			   m_trans(nullptr),
+			   m_polygonVAO(nullptr),
+			   m_uniformBuffer(nullptr),
+			   m_shaderProgram(nullptr)
 {
-	m_graphicsEngine = std::make_unique<GraphicsEngine>();
-	m_display = std::make_unique<GWindow>();
-
 	m_display->makeCurrentContext();
 
 	m_graphicsEngine->setViewport(m_display->getInnerSize());
@@ -61,7 +70,7 @@ void Game::onCreate()
 	};
 	*/
 	
-
+	//Cube vertices with position and color attributes
 	const float vertices[] = {
 		-0.5f, -0.5f,  0.5f, // 0
 		 0.0f,  0.0f,  1.0f,
@@ -142,7 +151,7 @@ void Game::onCreate()
 	float fovRadians = 45.0f * (3.1415927f / 180.0f);
 	
 	/////////////////////////////////////////////////////////////////////////
-	//*****TO DO: Create an object class that has its own matrices and data//
+	//*****TO DO: Create an Object class that has its own matrices and data//
 	/////////////////////////////////////////////////////////////////////////
 	m_projectionMatrix = std::make_unique<Mat4>();
 	m_viewMatrix = std::make_unique<Mat4>();
@@ -171,15 +180,16 @@ void Game::onUpdate(InputMouse mouse)
 
 	auto deltaTime = static_cast<float>(m_elapsedSeconds.count());
 
-	m_scale += 3.14f * deltaTime;
-	m_scale *= 0.5f;
-	float sinScale = sinf(m_scale);
-	float cosScale = cosf(m_scale);
-	
+	m_scale = m_scale + (3.1415927f * deltaTime);
+
+	m_sinScale = sinf(m_scale);
+	m_cosScale = cosf(m_scale);
+
+	//rotate camera around the cube's center point
 	if (mouse == InputMouse::LeftButtonDown)
 	{
 		m_viewMatrix->setLookAt(
-			Vec4(/*1.0f * sinScale*/ 3.0f, 0.0f, /*3.0f * cosScale*/ 3.0f, 1.0f), // Eye
+			Vec4(3.0f * m_sinScale, 0.0f, 3.0f * m_cosScale, 1.0f), // Eye
 			Vec4(0.0f, 0.0f, 0.0f, 1.0f), // Center
 			Vec4(0.0f, 1.0f, 0.0f, 1.0f)  // Up
 		);
@@ -204,15 +214,15 @@ void Game::onUpdate(InputMouse mouse)
 	/////////////////////////////////
 	//ROTATION MATRIX AROUND X AXIS//
 	/////////////////////////////////
-	m_trans->setIdentity();
-	m_trans->setRotationX(m_scale);
-	*m_worldMatrix *= *m_trans;
+	//m_trans->setIdentity();
+	//m_trans->setRotationX(0.053);
+	//*m_worldMatrix *= *m_trans;
 
 	/////////////////////////////////
 	//ROTATION MATRIX AROUND Y AXIS//
 	/////////////////////////////////
 	//m_trans->setIdentity();
-	//m_trans->setRotationY(m_scale);
+	//m_trans->setRotationY(0.053);
 	//*m_worldMatrix *= *m_trans;
 	
 	UniformData data = {*m_worldMatrix, *m_viewMatrix, *m_projectionMatrix};
@@ -223,7 +233,7 @@ void Game::onUpdate(InputMouse mouse)
 	m_graphicsEngine->setVertexArrayObject(m_polygonVAO);
 	m_graphicsEngine->setUniformBuffer(m_uniformBuffer, 0);
 	m_graphicsEngine->setShaderProgram(m_shaderProgram);
-	m_graphicsEngine->drawTriangles(TriangleList, 36, 0);
+	m_graphicsEngine->drawTriangles(TriangleType::TriangleList, 36, 0);
 	
 	m_display->present(true);
 }

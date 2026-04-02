@@ -31,6 +31,8 @@ protected:
 	std::chrono::high_resolution_clock::time_point m_previousTime;
 	std::chrono::duration<double> m_elapsedSeconds;
 	float m_scale = 0.0f;
+	float m_sinScale = 0.0f;
+	float m_cosScale = 0.0f;
 
 	std::unique_ptr<Mat4> m_projectionMatrix;
 	std::unique_ptr<Mat4> m_viewMatrix;

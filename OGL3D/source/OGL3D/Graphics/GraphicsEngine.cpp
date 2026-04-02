@@ -119,10 +119,10 @@ void GraphicsEngine::drawTriangles(const TriangleType& triangleType, unsigned in
 
     switch(triangleType)
     {
-        case TriangleList:
+        case TriangleType::TriangleList:
             glTriType = GL_TRIANGLES;
             break;
-        case TriangleStrip:
+        case TriangleType::TriangleStrip:
             glTriType = GL_TRIANGLE_STRIP;
             break;
         default:

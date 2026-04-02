@@ -39,13 +39,13 @@ struct UniformBufferData
 	unsigned int size = 0;
 };
 
-enum TriangleType 
+enum class TriangleType 
 {
 	TriangleList = 0,
 	TriangleStrip
 };
 
-enum ShaderType
+enum class ShaderType
 {
 	VertexShader = 0,
 	FragmentShader

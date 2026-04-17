@@ -16,7 +16,7 @@ struct UniformData
 };
 
 Game::Game() : m_display(std::make_unique<GWindow>()),
-			   m_graphicsEngine(std::make_unique<GraphicsEngine>()),
+			   m_graphicsEngine(std::make_unique<GraphicsEngine>()), /*should this come before m_display?*/
 			   m_currentTime(),
 			   m_previousTime(),
 			   m_elapsedSeconds(0.0),

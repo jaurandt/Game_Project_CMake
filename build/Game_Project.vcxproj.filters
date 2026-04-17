@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\johna\source\repos\jaurandt\Game_Project_VSCode\Game_Project\Game\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\johna\source\repos\jaurandt\Game_Project_VSCode\Game_Project\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{C06DC7CE-765F-39D5-9DBE-82AC58C12803}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

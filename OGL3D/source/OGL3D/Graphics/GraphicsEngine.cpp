@@ -129,9 +129,9 @@ void GraphicsEngine::drawTriangles(const TriangleType& triangleType, unsigned in
             glTriType = GL_TRIANGLES;
             break;
 	}
-    
-    glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
+
+    glEnable(GL_CULL_FACE); // need to move
+	glCullFace(GL_BACK); // need to move
 
     glDrawElements(glTriType, vertexCount, GL_UNSIGNED_INT, 0);
     //glDrawArrays(glTriType, offset, vertexCount);

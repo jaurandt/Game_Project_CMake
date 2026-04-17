@@ -2,6 +2,11 @@
 
 #include <OGL3D/Math/Rect.h>
 
+// Needs to be set at CMake level
+#ifndef UNICODE
+#define UNICODE
+#endif
+
 class GWindow
 {
 public:

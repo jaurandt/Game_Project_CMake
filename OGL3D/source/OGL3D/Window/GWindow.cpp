@@ -95,18 +95,19 @@ GWindow::GWindow()
 	m_deviceContext = wglCreateContextAttribsARB(hDC, 0, openGLContextAttributes);
 	assert(m_deviceContext);
 
-	glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
+	glEnable(GL_DEPTH_TEST); //need to move to Game::Game()
+    glDepthFunc(GL_LEQUAL); //need to move to Game::Game()
 }
 
 GWindow::~GWindow()
 {
-	wglDeleteContext(HGLRC(m_deviceContext));
-	DestroyWindow((HWND)m_handle);
     if(m_deviceContextHandle)
     {
         ReleaseDC((HWND)m_handle, HDC(m_deviceContextHandle));
 	}
+
+    wglDeleteContext(HGLRC(m_deviceContext)); // can this come before ReleaseDC?
+    DestroyWindow((HWND)m_handle);
 }
 
 Rect GWindow::getInnerSize()

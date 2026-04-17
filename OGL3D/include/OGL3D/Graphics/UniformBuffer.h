@@ -12,6 +12,6 @@ public:
 	unsigned int getID();
 
 private:
-	unsigned int m_id;
+	unsigned int m_id = 0;
 	unsigned int m_size = 0;
 };

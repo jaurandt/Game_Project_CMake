@@ -94,9 +94,6 @@ GWindow::GWindow()
 
 	m_deviceContext = wglCreateContextAttribsARB(hDC, 0, openGLContextAttributes);
 	assert(m_deviceContext);
-
-	glEnable(GL_DEPTH_TEST); //need to move to Game::Game()
-    glDepthFunc(GL_LEQUAL); //need to move to Game::Game()
 }
 
 GWindow::~GWindow()
@@ -120,6 +117,12 @@ Rect GWindow::getInnerSize()
 void GWindow::makeCurrentContext()
 {
 	wglMakeCurrent(HDC(m_deviceContextHandle), HGLRC(m_deviceContext));
+
+    glEnable(GL_DEPTH_TEST); //moved from GWindow::GWindow()
+    glDepthFunc(GL_LEQUAL);  //moved from GWindow::GWindow()
+
+    glEnable(GL_CULL_FACE); // moved from drawTriangles, should be set once in the engine
+	glCullFace(GL_BACK); // moved from drawTriangles, should be set once in the engine
 }
 
 void GWindow::present(bool vsync)

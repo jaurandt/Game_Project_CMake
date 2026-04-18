@@ -15,8 +15,8 @@ struct UniformData
 	Mat4 projection;
 };
 
-Game::Game() : m_display(std::make_unique<GWindow>()),
-			   m_graphicsEngine(std::make_unique<GraphicsEngine>()), /*should this come before m_display?*/
+Game::Game() : m_graphicsEngine(std::make_unique<GraphicsEngine>()), /*should this come before m_display?*/
+			   m_display(std::make_unique<GWindow>()),
 			   m_currentTime(),
 			   m_previousTime(),
 			   m_elapsedSeconds(0.0),

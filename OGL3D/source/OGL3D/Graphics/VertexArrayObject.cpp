@@ -15,17 +15,19 @@ VertexArrayObject::VertexArrayObject(const VertexBufferData& data)
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_elementBufferID);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * data.indexCount, data.indicesList, GL_STATIC_DRAW);
 
+	unsigned int offset = 0;
 	for(unsigned int i = 0; i < data.attributesListSize; i++)
 	{
 		glVertexAttribPointer(
-			i, 
+			i,
 			data.attributesList[i].elements,
-			GL_FLOAT, 
-			GL_FALSE, 
-			data.vertexSize, 
-			(void*)((i == 0) ? 0 : data.attributesList[i - 1].elements * sizeof(float))
+			GL_FLOAT,
+			GL_FALSE,
+			data.vertexSize,
+			(void*)(uintptr_t)offset
 		);
 		glEnableVertexAttribArray(i);
+		offset += data.attributesList[i].elements * sizeof(float);
 	}
 	
 	glBindVertexArray(0);

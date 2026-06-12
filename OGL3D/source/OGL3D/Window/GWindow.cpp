@@ -1,7 +1,7 @@
 #include <OGL3D/Window/GWindow.h>
+#include <windows.h>
 #include <glad/glad.h>
 #include <glad/glad_wgl.h>
-#include <windows.h>
 #include <assert.h>
 
 //extern HINSTANCE hInstance;

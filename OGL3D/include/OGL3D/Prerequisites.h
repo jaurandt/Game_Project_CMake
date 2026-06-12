@@ -57,3 +57,23 @@ enum class InputMouse
 	RightButtonDown,
 	NoButtonDown
 };
+
+struct InputState
+{
+	bool leftMouseDown = false;
+	bool rightMouseDown = false;
+
+	bool leftMousePressed = false;
+	bool rightMousePressed = false;
+
+	bool leftMouseReleased = false;
+	bool rightMouseReleased = false;
+
+	void beginFrame()
+	{
+		leftMousePressed = false;
+		rightMousePressed = false;
+		leftMouseReleased = false;
+		rightMouseReleased = false;
+	}
+};

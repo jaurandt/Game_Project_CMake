@@ -17,6 +17,7 @@ public:
 
 	void makeCurrentContext();
 	void present(bool vsync);
+	void setTitle(const wchar_t* title);
 
 private:
 	void* m_handle = nullptr;

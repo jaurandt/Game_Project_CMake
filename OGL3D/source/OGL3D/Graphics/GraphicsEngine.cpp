@@ -2,6 +2,13 @@
 #include <OGL3D/Graphics/VertexArrayObject.h>
 #include <OGL3D/Graphics/UniformBuffer.h>
 #include <OGL3D/Graphics/ShaderProgram.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
 #include <glad/glad.h>
 #include <glad/glad_wgl.h>
 #include <assert.h>

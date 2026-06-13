@@ -69,11 +69,35 @@ struct InputState
 	bool leftMouseReleased = false;
 	bool rightMouseReleased = false;
 
+	bool keysDown[256] = {};
+	bool keysPressed[256] = {};
+	bool keysReleased[256] = {};
+
 	void beginFrame()
 	{
 		leftMousePressed = false;
 		rightMousePressed = false;
 		leftMouseReleased = false;
 		rightMouseReleased = false;
+
+		for (auto& key : keysPressed)
+		{
+			key = false;
+		}
+
+		for (auto& key : keysReleased)
+		{
+			key = false;
+		}
+	}
+
+	bool isKeyDown(unsigned int key) const
+	{
+		return key < 256 && keysDown[key];
+	}
+
+	bool wasKeyPressed(unsigned int key) const
+	{
+		return key < 256 && keysPressed[key];
 	}
 };

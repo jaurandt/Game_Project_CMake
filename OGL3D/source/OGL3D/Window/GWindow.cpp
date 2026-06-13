@@ -130,3 +130,8 @@ void GWindow::present(bool vsync)
     wglSwapIntervalEXT(vsync);
 	wglSwapLayerBuffers(HDC(m_deviceContextHandle), WGL_SWAP_MAIN_PLANE);
 }
+
+void GWindow::setTitle(const wchar_t* title)
+{
+    SetWindowTextW(HWND(m_handle), title);
+}

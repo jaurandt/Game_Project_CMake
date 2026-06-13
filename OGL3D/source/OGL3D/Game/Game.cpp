@@ -5,10 +5,16 @@
 #include <OGL3D/Graphics/ShaderProgram.h>
 #include <OGL3D/Graphics/UniformBuffer.h>
 #include <OGL3D/Math/Mat4.h>
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <cstdio>
+#include <random>
 
 struct UniformData
 {
@@ -16,6 +22,175 @@ struct UniformData
 	Mat4 view;
 	Mat4 projection;
 };
+
+namespace
+{
+	constexpr unsigned int SampleCount = 56;
+	constexpr float Pi = 3.1415927f;
+	constexpr float BoxWidth = 6.0f;
+	constexpr float XMin = -BoxWidth * 0.5f;
+	constexpr float XMax = BoxWidth * 0.5f;
+	constexpr float ZMin = -BoxWidth * 0.5f;
+	constexpr float ZMax = BoxWidth * 0.5f;
+	constexpr float BaseY = -1.35f;
+	constexpr float DensityScale = 0.95f;
+	constexpr int ModeCount = 7;
+	constexpr int ModeNx[ModeCount] = { 2, 1, 2, 3, 1, 3, 4 };
+	constexpr int ModeNz[ModeCount] = { 1, 2, 2, 1, 3, 3, 2 };
+
+	float evaluateProbability(float u, float v, int mode, float excitedMix, float phase)
+	{
+		const int nx = ModeNx[mode];
+		const int nz = ModeNz[mode];
+		const float c2 = std::clamp(excitedMix, 0.0f, 0.95f);
+		const float c1 = sqrtf(1.0f - c2 * c2);
+		const float groundState = sinf(Pi * u) * sinf(Pi * v);
+		const float excitedState = sinf(static_cast<float>(nx) * Pi * u) *
+			sinf(static_cast<float>(nz) * Pi * v);
+
+		return c1 * c1 * groundState * groundState +
+			c2 * c2 * excitedState * excitedState +
+			2.0f * c1 * c2 * groundState * excitedState * cosf(phase);
+	}
+
+	void addVertex(std::vector<float>& vertices, float x, float y, float z, float r, float g, float b)
+	{
+		vertices.push_back(x);
+		vertices.push_back(y);
+		vertices.push_back(z);
+		vertices.push_back(r);
+		vertices.push_back(g);
+		vertices.push_back(b);
+	}
+
+	void addFloorRect(
+		std::vector<float>& vertices,
+		std::vector<unsigned int>& indices,
+		float left,
+		float right,
+		float front,
+		float back,
+		float y,
+		float r,
+		float g,
+		float b)
+	{
+		const unsigned int start = static_cast<unsigned int>(vertices.size() / 6);
+
+		addVertex(vertices, left, y, front, r, g, b);
+		addVertex(vertices, left, y, back, r, g, b);
+		addVertex(vertices, right, y, front, r, g, b);
+		addVertex(vertices, right, y, back, r, g, b);
+
+		indices.push_back(start + 0);
+		indices.push_back(start + 1);
+		indices.push_back(start + 2);
+
+		indices.push_back(start + 2);
+		indices.push_back(start + 1);
+		indices.push_back(start + 3);
+	}
+
+	void buildQuantumBoxMesh(
+		std::vector<float>& vertices,
+		std::vector<unsigned int>& indices,
+		int mode,
+		float excitedMix,
+		float phase,
+		bool isCharging,
+		float releaseFlash,
+		bool showMeasurement,
+		float measurementU,
+		float measurementV)
+	{
+		vertices.clear();
+		indices.clear();
+		vertices.reserve(SampleCount * SampleCount * 6 + 12 * 4 * 6);
+		indices.reserve((SampleCount - 1) * (SampleCount - 1) * 6 + 12 * 6);
+
+		for (unsigned int zIndex = 0; zIndex < SampleCount; ++zIndex)
+		{
+			const float v = static_cast<float>(zIndex) / static_cast<float>(SampleCount - 1);
+			const float z = ZMin + BoxWidth * v;
+
+			for (unsigned int xIndex = 0; xIndex < SampleCount; ++xIndex)
+			{
+				const float u = static_cast<float>(xIndex) / static_cast<float>(SampleCount - 1);
+				const float x = XMin + BoxWidth * u;
+				const float probability = evaluateProbability(u, v, mode, excitedMix, phase);
+				const float y = BaseY + DensityScale * probability;
+
+				const float r = 0.08f + 0.72f * probability + releaseFlash;
+				const float g = 0.18f + 0.38f * probability + (isCharging ? 0.32f : 0.0f);
+				const float b = 0.55f + 0.45f * probability;
+
+				addVertex(vertices, x, y, z, r, g, b);
+			}
+		}
+
+		for (unsigned int zIndex = 0; zIndex < SampleCount - 1; ++zIndex)
+		{
+			for (unsigned int xIndex = 0; xIndex < SampleCount - 1; ++xIndex)
+			{
+				const unsigned int p00 = zIndex * SampleCount + xIndex;
+				const unsigned int p10 = p00 + 1;
+				const unsigned int p01 = p00 + SampleCount;
+				const unsigned int p11 = p01 + 1;
+
+				indices.push_back(p00);
+				indices.push_back(p01);
+				indices.push_back(p10);
+
+				indices.push_back(p10);
+				indices.push_back(p01);
+				indices.push_back(p11);
+			}
+		}
+
+		addFloorRect(vertices, indices, XMin - 0.07f, XMin + 0.07f, ZMin, ZMax, BaseY - 0.03f, 1.0f, 0.25f, 0.25f);
+		addFloorRect(vertices, indices, XMax - 0.07f, XMax + 0.07f, ZMin, ZMax, BaseY - 0.03f, 1.0f, 0.25f, 0.25f);
+		addFloorRect(vertices, indices, XMin, XMax, ZMin - 0.07f, ZMin + 0.07f, BaseY - 0.03f, 1.0f, 0.25f, 0.25f);
+		addFloorRect(vertices, indices, XMin, XMax, ZMax - 0.07f, ZMax + 0.07f, BaseY - 0.03f, 1.0f, 0.25f, 0.25f);
+
+		addFloorRect(vertices, indices, XMin, XMax, ZMax + 0.35f, ZMax + 0.48f, BaseY - 0.55f, 0.12f, 0.12f, 0.16f);
+		addFloorRect(vertices, indices, XMin, XMin + BoxWidth * excitedMix, ZMax + 0.35f, ZMax + 0.48f, BaseY - 0.43f, isCharging ? 0.2f : 0.8f, isCharging ? 0.95f : 0.45f, 1.0f);
+
+		const float markerX = XMin + BoxWidth * (static_cast<float>(mode) / static_cast<float>(ModeCount - 1));
+		addFloorRect(vertices, indices, markerX - 0.08f, markerX + 0.08f, ZMax + 0.62f, ZMax + 0.85f, BaseY - 0.08f, 1.0f, isCharging ? 0.95f : 0.55f, 0.2f);
+
+		if (showMeasurement)
+		{
+			const float x = XMin + BoxWidth * measurementU;
+			const float z = ZMin + BoxWidth * measurementV;
+			const float y = BaseY + DensityScale * evaluateProbability(measurementU, measurementV, mode, excitedMix, phase) + 0.08f;
+			addFloorRect(vertices, indices, x - 0.26f, x + 0.26f, z - 0.035f, z + 0.035f, y, 1.0f, 0.96f, 0.15f);
+			addFloorRect(vertices, indices, x - 0.035f, x + 0.035f, z - 0.26f, z + 0.26f, y, 1.0f, 0.96f, 0.15f);
+		}
+	}
+
+	void sampleMeasurement(float& outU, float& outV, int mode, float excitedMix, float phase)
+	{
+		static std::mt19937 rng(std::random_device{}());
+		std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+
+		for (int attempt = 0; attempt < 512; ++attempt)
+		{
+			const float u = unit(rng);
+			const float v = unit(rng);
+			const float probability = evaluateProbability(u, v, mode, excitedMix, phase);
+
+			if (unit(rng) * 2.0f <= probability)
+			{
+				outU = u;
+				outV = v;
+				return;
+			}
+		}
+
+		outU = 0.5f;
+		outV = 0.5f;
+	}
+}
 
 Game::Game() : m_graphicsEngine(std::make_unique<GraphicsEngine>()), /*should this come before m_display?*/
 			   m_display(std::make_unique<GWindow>()),
@@ -41,102 +216,19 @@ Game::~Game()
 
 void Game::onCreate()
 {
-	constexpr unsigned int sampleCount = 48;
-	constexpr float pi = 3.1415927f;
-	constexpr float boxWidth = 6.0f;
-	constexpr float xMin = -boxWidth * 0.5f;
-	constexpr float xMax = boxWidth * 0.5f;
-	constexpr float zMin = -boxWidth * 0.5f;
-	constexpr float zMax = boxWidth * 0.5f;
-	constexpr float baseY = -1.35f;
-	constexpr float densityScale = 0.95f;
-
 	std::vector<float> vertices;
 	std::vector<unsigned int> indices;
-	vertices.reserve(sampleCount * sampleCount * 6);
-	indices.reserve((sampleCount - 1) * (sampleCount - 1) * 6);
-
-	auto addVertex = [&vertices](float x, float y, float z, float r, float g, float b)
-	{
-		vertices.push_back(x);
-		vertices.push_back(y);
-		vertices.push_back(z);
-		vertices.push_back(r);
-		vertices.push_back(g);
-		vertices.push_back(b);
-	};
-
-	auto addFloorRect = [&vertices, &indices, &addVertex](float left, float right, float front, float back, float y, float r, float g, float b)
-	{
-		unsigned int start = static_cast<unsigned int>(vertices.size() / 6);
-
-		addVertex(left,  y, front, r, g, b);
-		addVertex(left,  y, back,  r, g, b);
-		addVertex(right, y, front, r, g, b);
-		addVertex(right, y, back,  r, g, b);
-
-		indices.push_back(start + 0);
-		indices.push_back(start + 1);
-		indices.push_back(start + 2);
-
-		indices.push_back(start + 2);
-		indices.push_back(start + 1);
-		indices.push_back(start + 3);
-	};
-
-	float c2 = 0.45f;
-	float c1 = sqrtf(1.0f - c2 * c2);
-
-	for (unsigned int zIndex = 0; zIndex < sampleCount; ++zIndex)
-	{
-		float v = static_cast<float>(zIndex) / static_cast<float>(sampleCount - 1);
-		float z = zMin + boxWidth * v;
-
-		for (unsigned int xIndex = 0; xIndex < sampleCount; ++xIndex)
-		{
-			float u = static_cast<float>(xIndex) / static_cast<float>(sampleCount - 1);
-			float x = xMin + boxWidth * u;
-
-			float groundState = sinf(pi * u) * sinf(pi * v);
-			float excitedState = sinf(2.0f * pi * u) * sinf(pi * v);
-
-			float probability = c1 * c1 * groundState * groundState +
-				c2 * c2 * excitedState * excitedState +
-				2.0f * c1 * c2 * groundState * excitedState;
-
-			float y = baseY + densityScale * probability;
-
-			float r = 0.1f + 0.85f * probability;
-			float g = 0.22f + 0.45f * probability;
-			float b = 0.75f + 0.25f * probability;
-
-			addVertex(x, y, z, r, g, b);
-		}
-	}
-
-	for (unsigned int zIndex = 0; zIndex < sampleCount - 1; ++zIndex)
-	{
-		for (unsigned int xIndex = 0; xIndex < sampleCount - 1; ++xIndex)
-		{
-			unsigned int p00 = zIndex * sampleCount + xIndex;
-			unsigned int p10 = p00 + 1;
-			unsigned int p01 = p00 + sampleCount;
-			unsigned int p11 = p01 + 1;
-
-			indices.push_back(p00);
-			indices.push_back(p01);
-			indices.push_back(p10);
-
-			indices.push_back(p10);
-			indices.push_back(p01);
-			indices.push_back(p11);
-		}
-	}
-
-	addFloorRect(xMin - 0.07f, xMin + 0.07f, zMin, zMax, baseY - 0.03f, 1.0f, 0.25f, 0.25f);
-	addFloorRect(xMax - 0.07f, xMax + 0.07f, zMin, zMax, baseY - 0.03f, 1.0f, 0.25f, 0.25f);
-	addFloorRect(xMin, xMax, zMin - 0.07f, zMin + 0.07f, baseY - 0.03f, 1.0f, 0.25f, 0.25f);
-	addFloorRect(xMin, xMax, zMax - 0.07f, zMax + 0.07f, baseY - 0.03f, 1.0f, 0.25f, 0.25f);
+	buildQuantumBoxMesh(
+		vertices,
+		indices,
+		m_selectedMode,
+		m_excitedMix,
+		m_phaseTime,
+		false,
+		0.0f,
+		false,
+		m_measurementU,
+		m_measurementV);
 
 	VertexAttribute graphAttributes[] = {
 		3,
@@ -177,7 +269,7 @@ void Game::onCreate()
 	m_worldMatrix = std::make_unique<Mat4>();
 	m_trans = std::make_unique<Mat4>();
 
-	float fovRadians = 45.0f * (pi / 180.0f);
+	float fovRadians = 45.0f * (Pi / 180.0f);
 	m_projectionMatrix->setPerspective(fovRadians, aspect, 0.01f, 100.0f);
 
 	m_viewMatrix->setLookAt(
@@ -185,20 +277,12 @@ void Game::onCreate()
 		Vec4(0.0f, 0.0f, 0.0f, 1.0f),
 		Vec4(0.0f, 1.0f, 0.0f, 1.0f)
 	);
+
+	m_display->setTitle(L"Quantum Particle in a 2D Box");
 }
 
 void Game::onUpdate(const InputState& input)
 {
-	constexpr unsigned int sampleCount = 48;
-	constexpr float pi = 3.1415927f;
-	constexpr float boxWidth = 6.0f;
-	constexpr float xMin = -boxWidth * 0.5f;
-	constexpr float xMax = boxWidth * 0.5f;
-	constexpr float zMin = -boxWidth * 0.5f;
-	constexpr float zMax = boxWidth * 0.5f;
-	constexpr float baseY = -1.35f;
-	constexpr float densityScale = 0.95f;
-
 	m_currentTime = std::chrono::high_resolution_clock::now();
 
 	if (m_previousTime.time_since_epoch().count())
@@ -209,175 +293,123 @@ void Game::onUpdate(const InputState& input)
 	m_previousTime = m_currentTime;
 
 	float deltaTime = static_cast<float>(m_elapsedSeconds.count());
-	m_scale += deltaTime;
+	deltaTime = std::min(deltaTime, 0.05f);
 
-	constexpr int modeCount = 7;
-	constexpr int modeNx[modeCount] = { 2, 1, 2, 3, 1, 3, 4 };
-	constexpr int modeNz[modeCount] = { 1, 2, 2, 1, 3, 3, 2 };
+	if (input.wasKeyPressed(VK_ESCAPE))
+	{
+		Quit();
+		return;
+	}
 
-	static int committedMode = 0;
-	static int previewMode = 0;
-	static bool isCharging = false;
-	static float chargedMix = 0.45f;
-	static float previewMix = 0.45f;
-	static float releaseFlash = 0.0f;
+	if (input.wasKeyPressed('P'))
+	{
+		m_isPaused = !m_isPaused;
+	}
+
+	if (input.wasKeyPressed('R'))
+	{
+		m_selectedMode = 0;
+		m_excitedMix = 0.45f;
+		m_previewMix = m_excitedMix;
+		m_phaseTime = 0.0f;
+		m_animationSpeed = 1.0f;
+		m_releaseFlash = 0.0f;
+		m_isCharging = false;
+		m_isPaused = false;
+		m_showMeasurement = false;
+	}
+
+	if (input.wasKeyPressed(VK_SPACE) || input.wasKeyPressed(VK_RIGHT))
+	{
+		m_selectedMode = (m_selectedMode + 1) % ModeCount;
+		m_releaseFlash = 0.25f;
+	}
+
+	if (input.wasKeyPressed(VK_LEFT))
+	{
+		m_selectedMode = (m_selectedMode + ModeCount - 1) % ModeCount;
+		m_releaseFlash = 0.25f;
+	}
+
+	if (input.isKeyDown(VK_UP))
+	{
+		m_excitedMix = std::min(0.95f, m_excitedMix + deltaTime * 0.45f);
+		m_previewMix = m_excitedMix;
+	}
+
+	if (input.isKeyDown(VK_DOWN))
+	{
+		m_excitedMix = std::max(0.0f, m_excitedMix - deltaTime * 0.45f);
+		m_previewMix = m_excitedMix;
+	}
+
+	if (input.wasKeyPressed(VK_OEM_PLUS) || input.wasKeyPressed(VK_ADD))
+	{
+		m_animationSpeed = std::min(3.0f, m_animationSpeed + 0.25f);
+	}
+
+	if (input.wasKeyPressed(VK_OEM_MINUS) || input.wasKeyPressed(VK_SUBTRACT))
+	{
+		m_animationSpeed = std::max(0.0f, m_animationSpeed - 0.25f);
+	}
 
 	if (input.leftMousePressed)
 	{
-		isCharging = true;
-		previewMix = 0.08f;
-		previewMode = committedMode + 1;
-
-		if (previewMode >= modeCount)
-		{
-			previewMode = 0;
-		}
+		m_isCharging = true;
+		m_previewMix = 0.08f;
+		m_selectedMode = (m_selectedMode + 1) % ModeCount;
 	}
 
-	if (input.leftMouseDown && isCharging)
+	if (input.leftMouseDown && m_isCharging)
 	{
-		previewMix += deltaTime * 0.45f;
-
-		if (previewMix > 0.92f)
-		{
-			previewMix = 0.92f;
-		}
+		m_previewMix = std::min(0.95f, m_previewMix + deltaTime * 0.55f);
 	}
 
-	if (input.leftMouseReleased && isCharging)
+	if (input.leftMouseReleased && m_isCharging)
 	{
-		committedMode = previewMode;
-		chargedMix = previewMix;
-		isCharging = false;
-		releaseFlash = 0.35f;
+		m_excitedMix = m_previewMix;
+		m_isCharging = false;
+		m_releaseFlash = 0.35f;
 	}
 
-	if (input.rightMousePressed)
+	const int visibleMode = m_selectedMode;
+	const float visibleMix = m_isCharging ? m_previewMix : m_excitedMix;
+
+	if (input.rightMousePressed || input.wasKeyPressed('M'))
 	{
-		committedMode = 0;
-		previewMode = 0;
-		chargedMix = 0.45f;
-		previewMix = chargedMix;
-		isCharging = false;
-		releaseFlash = 0.0f;
+		sampleMeasurement(m_measurementU, m_measurementV, visibleMode, visibleMix, m_phaseTime);
+		m_showMeasurement = true;
+		m_releaseFlash = 0.35f;
 	}
 
-	if (releaseFlash > 0.0f)
+	if (!m_isPaused)
 	{
-		releaseFlash -= deltaTime;
+		const int nx = ModeNx[visibleMode];
+		const int nz = ModeNz[visibleMode];
+		const float energyGround = 0.5f * static_cast<float>(1 * 1 + 1 * 1) * Pi * Pi;
+		const float energyExcited = 0.5f * static_cast<float>(nx * nx + nz * nz) * Pi * Pi;
+		const float omega = energyExcited - energyGround;
+		m_phaseTime += omega * deltaTime * 0.16f * m_animationSpeed;
+	}
 
-		if (releaseFlash < 0.0f)
-		{
-			releaseFlash = 0.0f;
-		}
+	if (m_releaseFlash > 0.0f)
+	{
+		m_releaseFlash = std::max(0.0f, m_releaseFlash - deltaTime);
 	}
 
 	std::vector<float> vertices;
 	std::vector<unsigned int> indices;
-	vertices.reserve(sampleCount * sampleCount * 6 + 8 * 4 * 6);
-	indices.reserve((sampleCount - 1) * (sampleCount - 1) * 6 + 8 * 6);
-
-	auto addVertex = [&vertices](float x, float y, float z, float r, float g, float b)
-	{
-		vertices.push_back(x);
-		vertices.push_back(y);
-		vertices.push_back(z);
-		vertices.push_back(r);
-		vertices.push_back(g);
-		vertices.push_back(b);
-	};
-
-	auto addFloorRect = [&vertices, &indices, &addVertex](float left, float right, float front, float back, float y, float r, float g, float b)
-	{
-		unsigned int start = static_cast<unsigned int>(vertices.size() / 6);
-
-		addVertex(left,  y, front, r, g, b);
-		addVertex(left,  y, back,  r, g, b);
-		addVertex(right, y, front, r, g, b);
-		addVertex(right, y, back,  r, g, b);
-
-		indices.push_back(start + 0);
-		indices.push_back(start + 1);
-		indices.push_back(start + 2);
-
-		indices.push_back(start + 2);
-		indices.push_back(start + 1);
-		indices.push_back(start + 3);
-	};
-
-	int visibleMode = isCharging ? previewMode : committedMode;
-	int excitedNx = modeNx[visibleMode];
-	int excitedNz = modeNz[visibleMode];
-	float c2 = isCharging ? previewMix : chargedMix;
-	float c1 = sqrtf(1.0f - c2 * c2);
-
-	float energyGround = 0.5f * static_cast<float>(1 * 1 + 1 * 1) * pi * pi;
-	float energyExcited = 0.5f * static_cast<float>(excitedNx * excitedNx + excitedNz * excitedNz) * pi * pi;
-	float omega = energyExcited - energyGround;
-
-	float timePhase = omega * m_scale * 0.16f;
-
-	for (unsigned int zIndex = 0; zIndex < sampleCount; ++zIndex)
-	{
-		float v = static_cast<float>(zIndex) / static_cast<float>(sampleCount - 1);
-		float z = zMin + boxWidth * v;
-
-		for (unsigned int xIndex = 0; xIndex < sampleCount; ++xIndex)
-		{
-			float u = static_cast<float>(xIndex) / static_cast<float>(sampleCount - 1);
-			float x = xMin + boxWidth * u;
-
-			float groundState = sinf(pi * u) * sinf(pi * v);
-			float excitedState = sinf(static_cast<float>(excitedNx) * pi * u) *
-				sinf(static_cast<float>(excitedNz) * pi * v);
-
-			float probability = c1 * c1 * groundState * groundState +
-				c2 * c2 * excitedState * excitedState +
-				2.0f * c1 * c2 * groundState * excitedState * cosf(timePhase);
-
-			float y = baseY + densityScale * probability;
-
-			float r = 0.08f + 0.72f * probability + releaseFlash;
-			float g = 0.18f + 0.38f * probability + (isCharging ? 0.32f : 0.0f);
-			float b = 0.55f + 0.45f * probability;
-
-			addVertex(x, y, z, r, g, b);
-		}
-	}
-
-	for (unsigned int zIndex = 0; zIndex < sampleCount - 1; ++zIndex)
-	{
-		for (unsigned int xIndex = 0; xIndex < sampleCount - 1; ++xIndex)
-		{
-			unsigned int p00 = zIndex * sampleCount + xIndex;
-			unsigned int p10 = p00 + 1;
-			unsigned int p01 = p00 + sampleCount;
-			unsigned int p11 = p01 + 1;
-
-			indices.push_back(p00);
-			indices.push_back(p01);
-			indices.push_back(p10);
-
-			indices.push_back(p10);
-			indices.push_back(p01);
-			indices.push_back(p11);
-		}
-	}
-
-	addFloorRect(xMin - 0.07f, xMin + 0.07f, zMin, zMax, baseY - 0.03f, 1.0f, 0.25f, 0.25f);
-	addFloorRect(xMax - 0.07f, xMax + 0.07f, zMin, zMax, baseY - 0.03f, 1.0f, 0.25f, 0.25f);
-	addFloorRect(xMin, xMax, zMin - 0.07f, zMin + 0.07f, baseY - 0.03f, 1.0f, 0.25f, 0.25f);
-	addFloorRect(xMin, xMax, zMax - 0.07f, zMax + 0.07f, baseY - 0.03f, 1.0f, 0.25f, 0.25f);
-
-	float meterLeft = xMin;
-	float meterRight = xMin + boxWidth * c2;
-	float meterBottom = baseY - 0.55f;
-	float meterTop = baseY - 0.43f;
-	addFloorRect(xMin, xMax, zMax + 0.35f, zMax + 0.48f, meterBottom, 0.12f, 0.12f, 0.16f);
-	addFloorRect(meterLeft, meterRight, zMax + 0.35f, zMax + 0.48f, meterTop, isCharging ? 0.2f : 0.8f, isCharging ? 0.95f : 0.45f, 1.0f);
-
-	float markerX = xMin + boxWidth * (static_cast<float>(visibleMode) / static_cast<float>(modeCount - 1));
-	addFloorRect(markerX - 0.08f, markerX + 0.08f, zMax + 0.62f, zMax + 0.85f, baseY - 0.08f, 1.0f, isCharging ? 0.95f : 0.55f, 0.2f);
+	buildQuantumBoxMesh(
+		vertices,
+		indices,
+		visibleMode,
+		visibleMix,
+		m_phaseTime,
+		m_isCharging,
+		m_releaseFlash,
+		m_showMeasurement,
+		m_measurementU,
+		m_measurementV);
 
 	VertexAttribute graphAttributes[] = {
 		3,
@@ -394,6 +426,17 @@ void Game::onUpdate(const InputState& input)
 		2
 	});
 
+	auto windowSize = m_display->getInnerSize();
+	m_graphicsEngine->setViewport(windowSize);
+
+	float aspect = 1.0f;
+
+	if (windowSize.height != 0)
+	{
+		aspect = static_cast<float>(windowSize.width) / static_cast<float>(windowSize.height);
+	}
+
+	m_projectionMatrix->setPerspective(45.0f * (Pi / 180.0f), aspect, 0.01f, 100.0f);
 	m_worldMatrix->setIdentity();
 
 	UniformData data = { *m_worldMatrix, *m_viewMatrix, *m_projectionMatrix };
@@ -411,6 +454,17 @@ void Game::onUpdate(const InputState& input)
 	);
 
 	m_display->present(true);
+
+	wchar_t title[256] = {};
+	swprintf_s(
+		title,
+		L"Quantum 2D Box | mode (%d,%d) | mix %.2f | speed %.2fx | %s | LMB charge, RMB/M measure, arrows tune, P pause, R reset",
+		ModeNx[visibleMode],
+		ModeNz[visibleMode],
+		visibleMix,
+		m_animationSpeed,
+		m_isPaused ? L"paused" : L"running");
+	m_display->setTitle(title);
 }
 
 
@@ -467,6 +521,30 @@ void Game::Run()
 				{
 					input.rightMouseDown = false;
 					input.rightMouseReleased = true;
+					break;
+				}
+				case WM_KEYDOWN:
+				case WM_SYSKEYDOWN:
+				{
+					if (msg.wParam < 256)
+					{
+						if (!input.keysDown[msg.wParam])
+						{
+							input.keysPressed[msg.wParam] = true;
+						}
+
+						input.keysDown[msg.wParam] = true;
+					}
+					break;
+				}
+				case WM_KEYUP:
+				case WM_SYSKEYUP:
+				{
+					if (msg.wParam < 256)
+					{
+						input.keysDown[msg.wParam] = false;
+						input.keysReleased[msg.wParam] = true;
+					}
 					break;
 				}
 				default: 

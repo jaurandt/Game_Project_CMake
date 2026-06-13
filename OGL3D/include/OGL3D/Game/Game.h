@@ -42,4 +42,16 @@ protected:
 	VertexArrayObjectPtr m_polygonVAO;
 	UniformBufferPtr m_uniformBuffer;
 	ShaderProgramPtr m_shaderProgram;
+
+	int m_selectedMode = 0;
+	float m_excitedMix = 0.45f;
+	float m_previewMix = 0.45f;
+	float m_phaseTime = 0.0f;
+	float m_animationSpeed = 1.0f;
+	float m_releaseFlash = 0.0f;
+	bool m_isCharging = false;
+	bool m_isPaused = false;
+	bool m_showMeasurement = false;
+	float m_measurementU = 0.5f;
+	float m_measurementV = 0.5f;
 };

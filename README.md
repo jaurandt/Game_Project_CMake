@@ -5,3 +5,4 @@ This is a 2D, quantum infinite square well.
 
 <img width="1497" height="787" alt="image" src="https://github.com/user-attachments/assets/a37fa28c-bb91-43e3-88ec-897f94df5762" />
 
+<img width="1497" height="787" alt="image" src="https://github.com/user-attachments/assets/b2d919ad-6c3c-4ee6-a317-62b03b138e70" />

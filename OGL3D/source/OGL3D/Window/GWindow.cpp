@@ -45,7 +45,7 @@ GWindow::GWindow()
     auto classID = RegisterClassExW(&wcex);
     assert(classID);
 
-    RECT rect = { 0, 0, 800, 600 };
+    RECT rect = { 0, 0, 1200, 600 };
 	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_SYSMENU, FALSE);
 
     m_handle = CreateWindowExW(0, MAKEINTATOM(classID), L"OpenGL Window", WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_SYSMENU,

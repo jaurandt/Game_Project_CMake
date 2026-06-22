@@ -184,11 +184,3 @@ The codebase is organized for clarity and extensibility:
 
 - Griffiths, D. J. (2018). *Introduction to Quantum Mechanics* (3rd ed.)
 - Shankar, R. (1994). *Principles of Quantum Mechanics*
-
-## License
-
-(Add your license here)
-
-## Contact
-
-(Add contact information here)

@@ -35,18 +35,38 @@ This project visualizes the 2D infinite square well problem from quantum mechani
 
 ### Build
 
-```bash
-mkdir build
-cd build
-cmake ..
-cmake --build .
+Run these commands from the project root in PowerShell (Visual Studio 2026
+with the Desktop development with C++ workload and CMake 4.2+):
+
+```powershell
+cmake -S . -B build-vs -G "Visual Studio 18 2026" -A x64
+cmake --build build-vs --config Debug
 ```
+
+The `build-vs/` directory (and any older `build/` directory) is generated and ignored by Git. It contains CMake's
+compiler checks and cache, build-system files, compiled binaries, debug symbols,
+and a runtime copy of `Assets/`. Keep the original `Assets/` directory. To reset
+the build (for example, after changing compilers), remove the entire build
+directory and repeat the build steps above; avoid deleting individual CMake or
+Ninja files from an active build. `compile_commands.json` is generated too, but
+may be used by editor tooling.
+
+Keep machine-specific CMake presets in the ignored `CMakeUserPresets.json`;
+shared `CMakePresets.json` files can be committed.
 
 ### Run
 
-```bash
-./Game_Project.exe
+From the project root:
+
+```powershell
+cd build-vs/Debug
+.\Game_Project.exe
 ```
+
+Run from this directory so the application can find its copied `Assets/` folder.
+If a compiler update causes an old Ninja build to report `CreateProcess failed`,
+its cache may reference a removed compiler. Configure the fresh `build-vs/`
+directory using the commands above.
 
 ## Controls
 

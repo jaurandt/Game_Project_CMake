@@ -52,6 +52,7 @@ protected:
 	bool m_isCharging = false;
 	bool m_isPaused = false;
 	bool m_showMeasurement = false;
+	unsigned int m_measurementCount = 0;
 	float m_measurementU = 0.5f;
 	float m_measurementV = 0.5f;
 };

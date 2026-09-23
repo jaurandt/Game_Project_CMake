@@ -70,6 +70,21 @@ directory using the commands above.
 
 ## Controls
 
+The persistent **Quantum Explorer** sidebar provides buttons for pause/resume,
+reset, mode selection, mix amplitude, animation speed, and position sampling.
+The scene resizes alongside the sidebar; mouse charging only starts in the scene.
+
+The inspector shows the selected quantum numbers, ground/excited probabilities,
+excited and mean energy relative to the ground energy, and relative phase.
+Mix is an amplitude: a mix of 0.45 means an excited-state probability of 20.25%.
+Energy ratios use the square-well quantum numbers and are dimensionless.
+Surface height and brightness show relative density, not a particle trajectory.
+Charging and release temporarily tint the surface for interaction feedback.
+
+Each sample displays coordinates from 0 to 1 measured from a corner of the box,
+along with a count since reset. The yellow cross marks the latest sampled
+position. Sampling leaves the wavefunction unchanged in this visualization.
+
 | Key/Input | Action |
 |-----------|--------|
 | **Space** / **Right Arrow** | Next quantum mode |
@@ -157,7 +172,7 @@ The visualization supports 7 different quantum modes:
 1. Select a mode (e.g., mode 0)
 2. Use **Up arrow** to gradually increase the mix
 3. Observe how the probability density changes
-4. If paused (press **P**), you'll see just one mode
+4. If paused (press **P**), the current interference pattern freezes
 5. If running, you'll see oscillating interference patterns
 
 ### Control the Oscillation Frequency

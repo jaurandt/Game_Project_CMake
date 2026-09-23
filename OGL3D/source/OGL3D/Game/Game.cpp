@@ -281,8 +281,24 @@ void Game::onCreate()
 	m_display->setTitle(L"Quantum Particle in a 2D Box");
 }
 
-void Game::onUpdate(const InputState& input)
+void Game::onUpdate(const InputState& rawInput)
 {
+	InputState input = rawInput;
+	for (auto action : m_display->takeActions())
+	{
+		switch (action)
+		{
+		case InterfaceAction::Pause: input.keysPressed['P'] = true; break;
+		case InterfaceAction::Reset: input.keysPressed['R'] = true; break;
+		case InterfaceAction::PreviousMode: input.keysPressed[VK_LEFT] = true; break;
+		case InterfaceAction::NextMode: input.keysPressed[VK_RIGHT] = true; break;
+		case InterfaceAction::Slower: input.keysPressed[VK_SUBTRACT] = true; break;
+		case InterfaceAction::Faster: input.keysPressed[VK_ADD] = true; break;
+		case InterfaceAction::Measure: input.keysPressed['M'] = true; break;
+		case InterfaceAction::LessMix: m_excitedMix = std::max(0.0f, m_excitedMix - 0.05f); break;
+		case InterfaceAction::MoreMix: m_excitedMix = std::min(0.95f, m_excitedMix + 0.05f); break;
+		}
+	}
 	m_currentTime = std::chrono::high_resolution_clock::now();
 
 	if (m_previousTime.time_since_epoch().count())
@@ -317,6 +333,7 @@ void Game::onUpdate(const InputState& input)
 		m_isCharging = false;
 		m_isPaused = false;
 		m_showMeasurement = false;
+		m_measurementCount = 0;
 	}
 
 	if (input.wasKeyPressed(VK_SPACE) || input.wasKeyPressed(VK_RIGHT))
@@ -379,6 +396,7 @@ void Game::onUpdate(const InputState& input)
 	{
 		sampleMeasurement(m_measurementU, m_measurementV, visibleMode, visibleMix, m_phaseTime);
 		m_showMeasurement = true;
+		++m_measurementCount;
 		m_releaseFlash = 0.35f;
 	}
 
@@ -455,16 +473,27 @@ void Game::onUpdate(const InputState& input)
 
 	m_display->present(true);
 
-	wchar_t title[256] = {};
+	wchar_t state[512] = {};
 	swprintf_s(
-		title,
-		L"Quantum 2D Box | mode (%d,%d) | mix %.2f | speed %.2fx | %s | LMB charge, RMB/M measure, arrows tune, P pause, R reset",
+		state,
+		L"%s  |  Speed %.2fx\nExcited mode: (%d, %d)  [%d / 7]\nMix amplitude: %.2f%s\nGround / excited: %.1f%% / %.1f%%\nEnergy / ground energy: %.2f\nMean energy / ground energy: %.2f\nRelative phase: %.0f degrees",
+		m_isPaused ? L"PAUSED" : (m_animationSpeed == 0.0f ? L"STOPPED" : L"RUNNING"),
+		m_animationSpeed,
 		ModeNx[visibleMode],
 		ModeNz[visibleMode],
+		visibleMode + 1,
 		visibleMix,
-		m_animationSpeed,
-		m_isPaused ? L"paused" : L"running");
-	m_display->setTitle(title);
+		m_isCharging ? L" (charging)" : L"",
+		100.0f * (1.0f - visibleMix * visibleMix), 100.0f * visibleMix * visibleMix,
+		0.5f * (ModeNx[visibleMode] * ModeNx[visibleMode] + ModeNz[visibleMode] * ModeNz[visibleMode]),
+		1.0f + visibleMix * visibleMix * (0.5f * (ModeNx[visibleMode] * ModeNx[visibleMode] + ModeNz[visibleMode] * ModeNz[visibleMode]) - 1.0f),
+		fmodf(m_phaseTime, 2.0f * Pi) * 180.0f / Pi);
+	wchar_t measurement[256] = {};
+	if (m_showMeasurement)
+		swprintf_s(measurement, L"Sample #%u: x/L = %.3f, z/L = %.3f\nCoordinates measured from the box corner.", m_measurementCount, m_measurementU, m_measurementV);
+	else
+		swprintf_s(measurement, L"No position sampled yet.\nSample to explore the distribution.");
+	m_display->updateInspector(state, measurement, m_isPaused);
 }
 
 
@@ -484,8 +513,19 @@ void Game::Run()
 
 		while(PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
+			// Native inspector controls must receive their own mouse and keyboard events.
+			if (msg.hwnd && !m_display->isSceneWindow(msg.hwnd))
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+				continue;
+			}
 			switch (msg.message)
 			{
+				case WM_KILLFOCUS:
+					input = InputState{};
+					m_isCharging = false;
+					break;
 				case WM_QUIT:
 				{
 					m_isRunning = false;
@@ -499,12 +539,14 @@ void Game::Run()
 					}
 
 					input.leftMouseDown = true;
+					SetCapture(msg.hwnd);
 					break;
 				}
 				case WM_LBUTTONUP:
 				{
 					input.leftMouseDown = false;
 					input.leftMouseReleased = true;
+					ReleaseCapture();
 					break;
 				}
 				case WM_RBUTTONDOWN:

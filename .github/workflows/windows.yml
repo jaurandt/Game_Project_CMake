@@ -1,0 +1,56 @@
+name: Windows build and release # Verify and package Quantum Box Explorer.
+on: # Run validation for changes and versioned releases.
+  push: # Build branches and publish version tags.
+    branches: ['**'] # Validate each development branch.
+    tags: ['v*'] # Gate release publishing on explicit version tags.
+  pull_request: # Validate proposed changes before merging.
+  workflow_dispatch: # Allow an on-demand build artifact.
+permissions: # Limit default token access.
+  contents: read # Checkout requires repository read access.
+jobs: # Separate validation from release publishing.
+  build: # Build and test without release write permissions.
+    runs-on: windows-2022 # Use the stable Visual Studio 2022 toolchain.
+    steps: # Produce the same portable ZIP as the local build.
+      - uses: actions/checkout@v5 # Retrieve the selected source revision.
+      - name: Configure # Enable physics tests and a static runtime.
+        run: cmake -S . -B build-release -G "Visual Studio 17 2022" -A x64 -DBUILD_TESTING=ON # Generate the Windows x64 build.
+      - name: Build # Compile the renderer and shared physics tests.
+        run: cmake --build build-release --config Release --parallel # Fail on compilation errors.
+      - name: Test # Require every invariant to pass before packaging.
+        run: ctest --test-dir build-release -C Release --output-on-failure --no-tests=error # Fail if tests are missing or unsuccessful.
+      - name: Package # Include the executable, shaders, and documentation.
+        run: cpack --config build-release/CPackConfig.cmake -C Release -B build-release/package # Generate the release ZIP.
+      - name: Verify package and checksum # Inspect what users will actually download.
+        shell: pwsh # Use native archive and hashing commands.
+        run: | # Fail before upload if the archive is incomplete.
+          $archive = Get-Item build-release/package/QuantumBoxExplorer-1.0.0-windows-x64.zip # Locate the expected versioned asset.
+          Expand-Archive -LiteralPath $archive.FullName -DestinationPath build-release/package-check # Check the generated ZIP contents.
+          $exe = @(Get-ChildItem build-release/package-check -Recurse -Filter QuantumBoxExplorer.exe) # Find the packaged application.
+          if ($exe.Count -ne 1) { throw 'Package must contain exactly one executable' } # Reject missing or duplicated binaries.
+          foreach ($file in @('Assets/Shaders/BasicShader.vert','Assets/Shaders/BasicShader.frag','README.md','RELEASE_NOTES.md','THIRD_PARTY_NOTICES.md')) { if (!(Test-Path (Join-Path $exe[0].DirectoryName $file))) { throw "Missing package file: $file" } } # Require all runtime and user files.
+          $hash = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant() # Hash the final archive bytes.
+          "$hash  $($archive.Name)" | Set-Content "$($archive.FullName).sha256" -Encoding ascii # Ship a checksum alongside the ZIP.
+      - uses: actions/upload-artifact@v4 # Preserve verified binaries for branch builds and the release job.
+        with: # Upload only the intended distributable files.
+          name: QuantumBoxExplorer-windows-x64 # Give downloads a recognizable artifact name.
+          path: build-release/package/* # Include the archive and SHA256 checksum.
+          if-no-files-found: error # Never pass an empty package upload.
+  release: # Publish only after the Windows build and tests pass.
+    if: startsWith(github.ref, 'refs/tags/v') # Restrict publication to explicit release tags.
+    needs: build # Require successful verification and packaging.
+    runs-on: ubuntu-latest # Use the hosted GitHub CLI for publishing.
+    permissions: # Grant release creation only to this job.
+      contents: write # Attach downloadable assets to the tagged release.
+    steps: # Retrieve verified artifacts and publish their exact bytes.
+      - uses: actions/checkout@v5 # Read the release notes from the tagged revision.
+      - uses: actions/download-artifact@v4 # Retrieve the successful Windows package.
+        with: # Match the build job's artifact.
+          name: QuantumBoxExplorer-windows-x64 # Select the release archive and checksum.
+          path: release-assets # Isolate publication inputs.
+      - name: Publish release # Create a downloadable versioned release.
+        env: # Authenticate using the scoped workflow token.
+          GH_TOKEN: ${{ github.token }} # Supply repository release permissions.
+          RELEASE_TAG: ${{ github.ref_name }} # Pass the tag as data instead of shell source.
+        run: | # Validate the tag and publish the verified artifacts.
+          test "$RELEASE_TAG" = "v1.0.0" # Prevent a mismatched tag from shipping version 1.0.0 assets.
+          gh release create "$RELEASE_TAG" release-assets/* --verify-tag --title "Quantum Box Explorer 1.0" --notes-file RELEASE_NOTES.md # Publish notes, archive, and checksum together.

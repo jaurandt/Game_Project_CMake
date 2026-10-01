@@ -15,6 +15,7 @@
 #include <cmath>
 #include <cstdio>
 #include <random>
+#include <OGL3D/Physics/QuantumBox.h> // Use the same tested model for rendering and measurements.
 
 struct UniformData
 {
@@ -34,23 +35,13 @@ namespace
 	constexpr float ZMax = BoxWidth * 0.5f;
 	constexpr float BaseY = -1.35f;
 	constexpr float DensityScale = 0.95f;
-	constexpr int ModeCount = 7;
-	constexpr int ModeNx[ModeCount] = { 2, 1, 2, 3, 1, 3, 4 };
-	constexpr int ModeNz[ModeCount] = { 1, 2, 2, 1, 3, 3, 2 };
+	using QuantumBox::ModeCount; // Share the selectable mode count with physics tests.
+	using QuantumBox::ModeNx; // Share horizontal quantum numbers with the inspector.
+	using QuantumBox::ModeNz; // Share vertical quantum numbers with the inspector.
 
 	float evaluateProbability(float u, float v, int mode, float excitedMix, float phase)
 	{
-		const int nx = ModeNx[mode];
-		const int nz = ModeNz[mode];
-		const float c2 = std::clamp(excitedMix, 0.0f, 0.95f);
-		const float c1 = sqrtf(1.0f - c2 * c2);
-		const float groundState = sinf(Pi * u) * sinf(Pi * v);
-		const float excitedState = sinf(static_cast<float>(nx) * Pi * u) *
-			sinf(static_cast<float>(nz) * Pi * v);
-
-		return c1 * c1 * groundState * groundState +
-			c2 * c2 * excitedState * excitedState +
-			2.0f * c1 * c2 * groundState * excitedState * cosf(phase);
+		return static_cast<float>(0.25 * QuantumBox::density(u, v, mode, excitedMix, phase)); // Preserve the existing relative surface height.
 	}
 
 	void addVertex(std::vector<float>& vertices, float x, float y, float z, float r, float g, float b)
@@ -171,24 +162,9 @@ namespace
 	void sampleMeasurement(float& outU, float& outV, int mode, float excitedMix, float phase)
 	{
 		static std::mt19937 rng(std::random_device{}());
-		std::uniform_real_distribution<float> unit(0.0f, 1.0f);
-
-		for (int attempt = 0; attempt < 512; ++attempt)
-		{
-			const float u = unit(rng);
-			const float v = unit(rng);
-			const float probability = evaluateProbability(u, v, mode, excitedMix, phase);
-
-			if (unit(rng) * 2.0f <= probability)
-			{
-				outU = u;
-				outV = v;
-				return;
-			}
-		}
-
-		outU = 0.5f;
-		outV = 0.5f;
+		const auto position = QuantumBox::sample(mode, excitedMix, phase, rng); // Sample without introducing a fallback point mass.
+		outU = static_cast<float>(position.first); // Convert normalized horizontal coordinates for rendering.
+		outV = static_cast<float>(position.second); // Convert normalized vertical coordinates for rendering.
 	}
 }
 
@@ -255,6 +231,7 @@ void Game::onCreate()
 	});
 
 	m_shaderProgram->setUniformBufferSlot("UniformData", 0);
+	std::cout << "Scene shaders initialized." << std::endl; // Distinguish asset and shader startup from driver failures.
 
 	auto windowSize = m_display->getInnerSize();
 	float aspect = 1.0f;
@@ -278,7 +255,7 @@ void Game::onCreate()
 		Vec4(0.0f, 1.0f, 0.0f, 1.0f)
 	);
 
-	m_display->setTitle(L"Quantum Particle in a 2D Box");
+	m_display->setTitle(L"Quantum Box Explorer 1.0"); // Identify the release in the application title.
 }
 
 void Game::onUpdate(const InputState& rawInput)
@@ -402,11 +379,7 @@ void Game::onUpdate(const InputState& rawInput)
 
 	if (!m_isPaused)
 	{
-		const int nx = ModeNx[visibleMode];
-		const int nz = ModeNz[visibleMode];
-		const float energyGround = 0.5f * static_cast<float>(1 * 1 + 1 * 1) * Pi * Pi;
-		const float energyExcited = 0.5f * static_cast<float>(nx * nx + nz * nz) * Pi * Pi;
-		const float omega = energyExcited - energyGround;
+		const float omega = static_cast<float>(QuantumBox::phaseRate(visibleMode)); // Evolve using the tested eigenstate energy gap.
 		m_phaseTime += omega * deltaTime * 0.16f * m_animationSpeed;
 	}
 

@@ -1,4 +1,4 @@
-# Quantum Particle in a 2D Infinite Square Well
+# Quantum Box Explorer 1.0
 
 An interactive 3D visualization of quantum mechanics using OpenGL. This application simulates and displays the probability density of a particle confined in a 2D infinite square well, allowing exploration of quantum superposition states and energy level transitions.
 
@@ -29,7 +29,7 @@ This project visualizes the 2D infinite square well problem from quantum mechani
 ## Quick Start
 
 ### Prerequisites
-- Windows 10+ with OpenGL support
+- 64-bit Windows 10+ with an OpenGL 4.6 graphics driver
 - CMake 3.20+
 - C++17 compatible compiler (MSVC recommended)
 
@@ -60,10 +60,11 @@ From the project root:
 
 ```powershell
 cd build-vs/Debug
-.\Game_Project.exe
+.\QuantumBoxExplorer.exe # Launch the built visualization.
 ```
 
-Run from this directory so the application can find its copied `Assets/` folder.
+The application locates its copied `Assets/` folder beside the executable,
+regardless of the working directory it is launched from.
 If a compiler update causes an old Ninja build to report `CreateProcess failed`,
 its cache may reference a removed compiler. Configure the fresh `build-vs/`
 directory using the commands above.
@@ -191,13 +192,27 @@ The visualization supports 7 different quantum modes:
 ## Technical Details
 
 - **Language**: C++17
-- **Graphics API**: OpenGL 3.3+
+- **Graphics API**: OpenGL 4.6 context with GLSL 4.10 shaders
 - **Rendering**: 56×56 sample grid for smooth surfaces
 - **Shaders**: GLSL vertex/fragment shaders
 - **Platform**: Windows (Win32 API for windowing and input)
 - **Build System**: CMake
 
 ## Development
+
+Build and run the physics tests with `cmake --build build-vs --config Release`
+and `ctest --test-dir build-vs -C Release --output-on-failure`. Tests use the same
+physics model as the renderer and remain enabled in Release builds.
+
+To verify the native application on a Windows desktop, run
+`powershell -ExecutionPolicy Bypass -File scripts/SmokeTest.ps1 -Executable build-vs/Release/QuantumBoxExplorer.exe`.
+The check launches from a different working directory, exercises the inspector,
+and checks clean shutdown. It requires a working graphics driver.
+
+The Windows workflow in `.github/workflows/windows.yml` builds, tests, and
+packages a portable ZIP. A `v1.0.0` tag also publishes the verified archive and
+checksum as a GitHub release. Local packages can be generated with
+`cpack --config build-vs/CPackConfig.cmake -C Release -B build-vs/package`.
 
 The codebase is organized for clarity and extensibility:
 

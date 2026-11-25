@@ -4,6 +4,7 @@
 #include <OGL3D/Math/Mat4.h>
 #include <memory>
 #include <chrono>
+#include <vector> // Keep CPU vertex storage across frames.
 
 class GraphicsEngine;
 class GWindow;
@@ -40,6 +41,7 @@ protected:
 	std::unique_ptr<Mat4> m_trans;
 
 	VertexArrayObjectPtr m_polygonVAO;
+	std::vector<float> m_meshVertices; // Reuse the scratch space for interleaved positions and colors.
 	UniformBufferPtr m_uniformBuffer;
 	ShaderProgramPtr m_shaderProgram;
 

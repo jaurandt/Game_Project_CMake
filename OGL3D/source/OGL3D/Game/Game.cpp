@@ -27,6 +27,14 @@ struct UniformData
 namespace
 {
 	constexpr unsigned int SampleCount = 56;
+	constexpr unsigned int VertexComponents = 6; // Store three position and three color components.
+	constexpr unsigned int SurfaceVertexCount = SampleCount * SampleCount; // Share one vertex at each grid point.
+	constexpr unsigned int SurfaceIndexCount = (SampleCount - 1) * (SampleCount - 1) * 6; // Draw each grid cell as two triangles.
+	constexpr unsigned int SceneRectCount = 7; // Count the four walls, two mix bars, and the mode marker.
+	constexpr unsigned int MeasurementRectCount = 2; // Reserve a rectangle for each arm of the cross.
+	constexpr unsigned int MeshVertexCapacity = SurfaceVertexCount + (SceneRectCount + MeasurementRectCount) * 4; // Reserve four vertices per rectangle.
+	constexpr unsigned int SceneIndexCount = SurfaceIndexCount + SceneRectCount * 6; // End the draw here when the cross is hidden.
+	constexpr unsigned int MeshIndexCount = SceneIndexCount + MeasurementRectCount * 6; // Include both arms when the cross is visible.
 	constexpr float Pi = 3.1415927f;
 	constexpr float BoxWidth = 6.0f;
 	constexpr float XMin = -BoxWidth * 0.5f;
@@ -44,7 +52,13 @@ namespace
 		return static_cast<float>(0.25 * QuantumBox::density(u, v, mode, excitedMix, phase)); // Preserve the existing relative surface height.
 	}
 
-	void addVertex(std::vector<float>& vertices, float x, float y, float z, float r, float g, float b)
+	void addVertex(std::vector<float>& vertices, 
+		           float x, 
+				   float y, 
+				   float z, 
+				   float r, 
+				   float g, 
+				   float b)
 	{
 		vertices.push_back(x);
 		vertices.push_back(y);
@@ -54,50 +68,53 @@ namespace
 		vertices.push_back(b);
 	}
 
-	void addFloorRect(
-		std::vector<float>& vertices,
-		std::vector<unsigned int>& indices,
-		float left,
-		float right,
-		float front,
-		float back,
-		float y,
-		float r,
-		float g,
-		float b)
+	void addFloorRect(std::vector<float>& vertices, // Append vertices in the order used by the shared index buffer.
+					  float left, 
+					  float right,
+					  float front, 
+					  float back,
+					  float y, 
+					  float r, 
+					  float g, 
+					  float b)
 	{
-		const unsigned int start = static_cast<unsigned int>(vertices.size() / 6);
-
 		addVertex(vertices, left, y, front, r, g, b);
 		addVertex(vertices, left, y, back, r, g, b);
 		addVertex(vertices, right, y, front, r, g, b);
 		addVertex(vertices, right, y, back, r, g, b);
-
-		indices.push_back(start + 0);
-		indices.push_back(start + 1);
-		indices.push_back(start + 2);
-
-		indices.push_back(start + 2);
-		indices.push_back(start + 1);
-		indices.push_back(start + 3);
 	}
 
-	void buildQuantumBoxMesh(
-		std::vector<float>& vertices,
-		std::vector<unsigned int>& indices,
-		int mode,
-		float excitedMix,
-		float phase,
-		bool isCharging,
-		float releaseFlash,
-		bool showMeasurement,
-		float measurementU,
-		float measurementV)
+	std::vector<unsigned int> buildQuantumBoxIndices() // Build the fixed triangle connectivity once.
+	{
+		std::vector<unsigned int> indices; // Store index data for the surface and floor rectangles.
+		indices.reserve(MeshIndexCount); // Reserve space for both arms of the optional cross.
+		for (unsigned int z = 0; z < SampleCount - 1; ++z) // Visit each row of grid cells.
+		{
+			for (unsigned int x = 0; x < SampleCount - 1; ++x) // Visit each cell with a right and lower neighbor.
+			{
+				const unsigned int top = z * SampleCount + x; // Locate the first point of the cell.
+				const unsigned int bottom = top + SampleCount; // Locate the corresponding point on the next row.
+				indices.insert(indices.end(), {top, bottom, top + 1, top + 1, bottom, bottom + 1}); // Preserve the surface triangle winding.
+			}
+		}
+		for (unsigned int first = SurfaceVertexCount; first < MeshVertexCapacity; first += 4) // Follow the order of the rectangles, including the cross.
+		{
+			indices.insert(indices.end(), {first, first + 1, first + 2, first + 2, first + 1, first + 3}); // Preserve the rectangle triangle winding.
+		}
+		return indices; // Pass the complete topology to the one-time upload.
+	}
+
+	void buildQuantumBoxVertices(std::vector<float>& vertices, // Evaluate the attributes that depend on simulation state.
+							 int mode,
+							 float excitedMix,
+							 float phase,
+							 bool isCharging,
+							 float releaseFlash,
+							 bool showMeasurement,
+							 float measurementU,
+							 float measurementV)
 	{
 		vertices.clear();
-		indices.clear();
-		vertices.reserve(SampleCount * SampleCount * 6 + 12 * 4 * 6);
-		indices.reserve((SampleCount - 1) * (SampleCount - 1) * 6 + 12 * 6);
 
 		for (unsigned int zIndex = 0; zIndex < SampleCount; ++zIndex)
 		{
@@ -119,43 +136,24 @@ namespace
 			}
 		}
 
-		for (unsigned int zIndex = 0; zIndex < SampleCount - 1; ++zIndex)
-		{
-			for (unsigned int xIndex = 0; xIndex < SampleCount - 1; ++xIndex)
-			{
-				const unsigned int p00 = zIndex * SampleCount + xIndex;
-				const unsigned int p10 = p00 + 1;
-				const unsigned int p01 = p00 + SampleCount;
-				const unsigned int p11 = p01 + 1;
+		addFloorRect(vertices, XMin - 0.07f, XMin + 0.07f, ZMin, ZMax, BaseY - 0.03f, 1.0f, 0.25f, 0.25f); // Add the left wall.
+		addFloorRect(vertices, XMax - 0.07f, XMax + 0.07f, ZMin, ZMax, BaseY - 0.03f, 1.0f, 0.25f, 0.25f); // Add the right wall.
+		addFloorRect(vertices, XMin, XMax, ZMin - 0.07f, ZMin + 0.07f, BaseY - 0.03f, 1.0f, 0.25f, 0.25f); // Add the front wall.
+		addFloorRect(vertices, XMin, XMax, ZMax - 0.07f, ZMax + 0.07f, BaseY - 0.03f, 1.0f, 0.25f, 0.25f); // Add the back wall.
 
-				indices.push_back(p00);
-				indices.push_back(p01);
-				indices.push_back(p10);
-
-				indices.push_back(p10);
-				indices.push_back(p01);
-				indices.push_back(p11);
-			}
-		}
-
-		addFloorRect(vertices, indices, XMin - 0.07f, XMin + 0.07f, ZMin, ZMax, BaseY - 0.03f, 1.0f, 0.25f, 0.25f);
-		addFloorRect(vertices, indices, XMax - 0.07f, XMax + 0.07f, ZMin, ZMax, BaseY - 0.03f, 1.0f, 0.25f, 0.25f);
-		addFloorRect(vertices, indices, XMin, XMax, ZMin - 0.07f, ZMin + 0.07f, BaseY - 0.03f, 1.0f, 0.25f, 0.25f);
-		addFloorRect(vertices, indices, XMin, XMax, ZMax - 0.07f, ZMax + 0.07f, BaseY - 0.03f, 1.0f, 0.25f, 0.25f);
-
-		addFloorRect(vertices, indices, XMin, XMax, ZMax + 0.35f, ZMax + 0.48f, BaseY - 0.55f, 0.12f, 0.12f, 0.16f);
-		addFloorRect(vertices, indices, XMin, XMin + BoxWidth * excitedMix, ZMax + 0.35f, ZMax + 0.48f, BaseY - 0.43f, isCharging ? 0.2f : 0.8f, isCharging ? 0.95f : 0.45f, 1.0f);
+		addFloorRect(vertices, XMin, XMax, ZMax + 0.35f, ZMax + 0.48f, BaseY - 0.55f, 0.12f, 0.12f, 0.16f); // Add the mix gauge track.
+		addFloorRect(vertices, XMin, XMin + BoxWidth * excitedMix, ZMax + 0.35f, ZMax + 0.48f, BaseY - 0.43f, isCharging ? 0.2f : 0.8f, isCharging ? 0.95f : 0.45f, 1.0f); // Add the current mix level.
 
 		const float markerX = XMin + BoxWidth * (static_cast<float>(mode) / static_cast<float>(ModeCount - 1));
-		addFloorRect(vertices, indices, markerX - 0.08f, markerX + 0.08f, ZMax + 0.62f, ZMax + 0.85f, BaseY - 0.08f, 1.0f, isCharging ? 0.95f : 0.55f, 0.2f);
+		addFloorRect(vertices, markerX - 0.08f, markerX + 0.08f, ZMax + 0.62f, ZMax + 0.85f, BaseY - 0.08f, 1.0f, isCharging ? 0.95f : 0.55f, 0.2f); // Add the selected mode marker.
 
 		if (showMeasurement)
 		{
 			const float x = XMin + BoxWidth * measurementU;
 			const float z = ZMin + BoxWidth * measurementV;
 			const float y = BaseY + DensityScale * evaluateProbability(measurementU, measurementV, mode, excitedMix, phase) + 0.08f;
-			addFloorRect(vertices, indices, x - 0.26f, x + 0.26f, z - 0.035f, z + 0.035f, y, 1.0f, 0.96f, 0.15f);
-			addFloorRect(vertices, indices, x - 0.035f, x + 0.035f, z - 0.26f, z + 0.26f, y, 1.0f, 0.96f, 0.15f);
+			addFloorRect(vertices, x - 0.26f, x + 0.26f, z - 0.035f, z + 0.035f, y, 1.0f, 0.96f, 0.15f); // Append the horizontal cross arm.
+			addFloorRect(vertices, x - 0.035f, x + 0.035f, z - 0.26f, z + 0.26f, y, 1.0f, 0.96f, 0.15f); // Append the vertical cross arm.
 		}
 	}
 
@@ -192,19 +190,8 @@ Game::~Game()
 
 void Game::onCreate()
 {
-	std::vector<float> vertices;
-	std::vector<unsigned int> indices;
-	buildQuantumBoxMesh(
-		vertices,
-		indices,
-		m_selectedMode,
-		m_excitedMix,
-		m_phaseTime,
-		false,
-		0.0f,
-		false,
-		m_measurementU,
-		m_measurementV);
+	m_meshVertices.reserve(MeshVertexCapacity * VertexComponents); // Allocate CPU storage for the largest frame once.
+	auto indices = buildQuantumBoxIndices(); // Prepare the full topology for a single upload.
 
 	VertexAttribute graphAttributes[] = {
 		3,
@@ -212,13 +199,14 @@ void Game::onCreate()
 	};
 
 	m_polygonVAO = m_graphicsEngine->createVertexArrayObject({
-		vertices.data(),
+		nullptr, // Allocate GPU storage now and fill it with the first frame.
 		indices.data(),
-		sizeof(float) * 6,
-		static_cast<unsigned int>(vertices.size() / 6),
+		sizeof(float) * VertexComponents, // Match the interleaved position and color layout.
+		MeshVertexCapacity, // Leave space for the cross even if it starts hidden.
 		static_cast<unsigned int>(indices.size()),
 		graphAttributes,
-		2
+		2, // Supply position and color attributes.
+		true // Mark this vertex buffer for frequent updates.
 	});
 
 	m_uniformBuffer = m_graphicsEngine->createUniformBuffer({
@@ -388,11 +376,8 @@ void Game::onUpdate(const InputState& rawInput)
 		m_releaseFlash = std::max(0.0f, m_releaseFlash - deltaTime);
 	}
 
-	std::vector<float> vertices;
-	std::vector<unsigned int> indices;
-	buildQuantumBoxMesh(
-		vertices,
-		indices,
+	buildQuantumBoxVertices( // Build positions and colors for this frame.
+		m_meshVertices, // Reuse the existing CPU allocation.
 		visibleMode,
 		visibleMix,
 		m_phaseTime,
@@ -402,20 +387,7 @@ void Game::onUpdate(const InputState& rawInput)
 		m_measurementU,
 		m_measurementV);
 
-	VertexAttribute graphAttributes[] = {
-		3,
-		3
-	};
-
-	m_polygonVAO = m_graphicsEngine->createVertexArrayObject({
-		vertices.data(),
-		indices.data(),
-		sizeof(float) * 6,
-		static_cast<unsigned int>(vertices.size() / 6),
-		static_cast<unsigned int>(indices.size()),
-		graphAttributes,
-		2
-	});
+	m_polygonVAO->updateVertices(m_meshVertices.data(), m_meshVertices.size() * sizeof(float)); // Upload only the active vertices to the existing buffer.
 
 	auto windowSize = m_display->getInnerSize();
 	m_graphicsEngine->setViewport(windowSize);
@@ -440,26 +412,30 @@ void Game::onUpdate(const InputState& rawInput)
 	m_graphicsEngine->setShaderProgram(m_shaderProgram);
 	m_graphicsEngine->drawTriangles(
 		TriangleType::TriangleList,
-		static_cast<unsigned int>(indices.size()),
+		m_showMeasurement ? MeshIndexCount : SceneIndexCount, // Include the cross only after a measurement.
 		0
 	);
 
 	m_display->present(true);
 
+	const float excitedProbability = visibleMix * visibleMix; // Square the amplitude once for the inspector probabilities and mean energy.
+	const float excitedEnergyRatio = static_cast<float>(QuantumBox::energyRatio(visibleMode)); // Use the model's energy ratio and preserve the display's float rounding.
 	wchar_t state[512] = {};
 	swprintf_s(
 		state,
-		L"%s  |  Speed %.2fx\nExcited mode: (%d, %d)  [%d / 7]\nMix amplitude: %.2f%s\nGround / excited: %.1f%% / %.1f%%\nEnergy / ground energy: %.2f\nMean energy / ground energy: %.2f\nRelative phase: %.0f degrees",
+		L"%s  |  Speed %.2fx\nExcited mode: (%d, %d)  [%d / %d]\nMix amplitude: %.2f%s\nGround / excited: %.1f%% / %.1f%%\nEnergy / ground energy: %.2f\nMean energy / ground energy: %.2f\nRelative phase: %.0f degrees", // Show the mode total from the model.
 		m_isPaused ? L"PAUSED" : (m_animationSpeed == 0.0f ? L"STOPPED" : L"RUNNING"),
 		m_animationSpeed,
 		ModeNx[visibleMode],
 		ModeNz[visibleMode],
 		visibleMode + 1,
+		ModeCount, // Keep the displayed total in sync with the selectable modes.
 		visibleMix,
 		m_isCharging ? L" (charging)" : L"",
-		100.0f * (1.0f - visibleMix * visibleMix), 100.0f * visibleMix * visibleMix,
-		0.5f * (ModeNx[visibleMode] * ModeNx[visibleMode] + ModeNz[visibleMode] * ModeNz[visibleMode]),
-		1.0f + visibleMix * visibleMix * (0.5f * (ModeNx[visibleMode] * ModeNx[visibleMode] + ModeNz[visibleMode] * ModeNz[visibleMode]) - 1.0f),
+		100.0f * (1.0f - excitedProbability), // The ground state carries the remaining probability.
+		100.0f * excitedProbability, // Convert the excited probability to a percentage.
+		excitedEnergyRatio, // Show the selected energy relative to the ground state.
+		1.0f + excitedProbability * (excitedEnergyRatio - 1.0f), // Weight the energy gap by the excited-state probability.
 		fmodf(m_phaseTime, 2.0f * Pi) * 180.0f / Pi);
 	wchar_t measurement[256] = {};
 	if (m_showMeasurement)

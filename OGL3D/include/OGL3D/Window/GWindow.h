@@ -4,7 +4,15 @@
 #include <string>
 #include <vector>
 
-enum class InterfaceAction { Pause = 1, Reset, PreviousMode, NextMode, LessMix, MoreMix, Slower, Faster, Measure };
+enum class InterfaceAction { Pause = 1, 
+							 Reset, 
+							 PreviousMode, 
+							 NextMode, 
+							 LessMix, 
+							 MoreMix, 
+							 Slower, 
+							 Faster, 
+							 Measure };
 
 // Needs to be set at CMake level
 #ifndef UNICODE

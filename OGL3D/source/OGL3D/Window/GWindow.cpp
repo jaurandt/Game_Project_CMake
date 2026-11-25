@@ -8,6 +8,8 @@
 namespace
 {
     constexpr int PanelWidth = 340;
+    constexpr int InspectorPanelId = 100; // Identify the inspector when creating and resizing it.
+    constexpr COLORREF InspectorBackground = RGB(23, 32, 46); // Use the same background for the panel and its labels.
     LRESULT CALLBACK InspectorProc(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
     {
         if (message == WM_COMMAND && HIWORD(wParam) == BN_CLICKED)
@@ -20,15 +22,15 @@ namespace
         if (message == WM_CTLCOLORSTATIC)
         {
             SetTextColor(reinterpret_cast<HDC>(wParam), RGB(219, 231, 242));
-            SetBkColor(reinterpret_cast<HDC>(wParam), RGB(23, 32, 46));
-            SetDCBrushColor(reinterpret_cast<HDC>(wParam), RGB(23, 32, 46));
+            SetBkColor(reinterpret_cast<HDC>(wParam), InspectorBackground); // Match the label text background to the panel.
+            SetDCBrushColor(reinterpret_cast<HDC>(wParam), InspectorBackground); // Paint the rest of the label with the same color.
             return reinterpret_cast<LRESULT>(GetStockObject(DC_BRUSH));
         }
         if (message == WM_ERASEBKGND)
         {
             RECT rect;
             GetClientRect(handle, &rect);
-            SetDCBrushColor(reinterpret_cast<HDC>(wParam), RGB(23, 32, 46));
+            SetDCBrushColor(reinterpret_cast<HDC>(wParam), InspectorBackground); // Fill the panel with the shared background.
             FillRect(reinterpret_cast<HDC>(wParam), &rect, static_cast<HBRUSH>(GetStockObject(DC_BRUSH)));
             return 1;
         }
@@ -50,14 +52,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         case WM_SIZE:
         {
-            if (auto panel = GetDlgItem(hWnd, 100))
+            if (auto panel = GetDlgItem(hWnd, InspectorPanelId)) // Find the inspector child before resizing it.
                 MoveWindow(panel, 0, 0, PanelWidth, HIWORD(lParam), TRUE);
             return 0;
-        }
-        case WM_DESTROY:
-        {
-            GWindow* window = (GWindow*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
-            break;
         }
         case WM_CLOSE:
         {
@@ -97,8 +94,6 @@ GWindow::GWindow()
 
     assert(m_handle);
 
-	SetWindowLongPtrW((HWND)m_handle, GWLP_USERDATA, (LONG_PTR)this);
-
     WNDCLASSW panelClass = {};
     panelClass.lpfnWndProc = InspectorProc;
     panelClass.lpszClassName = L"QuantumInspector";
@@ -106,7 +101,7 @@ GWindow::GWindow()
     RegisterClassW(&panelClass);
     m_panel = CreateWindowW(panelClass.lpszClassName, L"Simulation inspector",
         WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 0, 0, PanelWidth, 800,
-        HWND(m_handle), reinterpret_cast<HMENU>(100), nullptr, nullptr);
+        HWND(m_handle), reinterpret_cast<HMENU>(static_cast<INT_PTR>(InspectorPanelId)), nullptr, nullptr); // Pass the child ID in the menu parameter.
     SetWindowLongPtrW(HWND(m_panel), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
     m_font = CreateFontW(-16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");

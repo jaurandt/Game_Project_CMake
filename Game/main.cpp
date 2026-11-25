@@ -11,9 +11,14 @@ int main()
 	{
 		wchar_t executablePath[32768] = {}; // Reserve the Windows maximum extended path length.
 		const DWORD length = GetModuleFileNameW(nullptr, executablePath, 32768); // Locate the executable rather than the caller's directory.
-		if (length == 0 || length >= 32768) throw std::runtime_error("Unable to locate the executable"); // Reject unusable or truncated paths.
+		if (length == 0 || length >= 32768) {
+			throw std::runtime_error("Unable to locate the executable"); // Reject unusable or truncated paths.
+		}
+
 		std::filesystem::current_path(std::filesystem::path(executablePath).parent_path()); // Find the packaged Assets folder after any launch method.
+		
 		Game game; // default Game constructor
+		
 		std::cout << "Graphics context initialized." << std::endl; // Identify successful driver startup in runtime diagnostics.
 		game.Run();
 	}

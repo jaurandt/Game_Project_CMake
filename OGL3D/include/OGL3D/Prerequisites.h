@@ -26,6 +26,7 @@ struct VertexBufferData
 
 	VertexAttribute* attributesList = nullptr;
 	unsigned int attributesListSize = 0;
+	bool dynamicVertices = false; // Allow callers to opt into frequent vertex updates.
 };
 
 struct ShaderProgramPath
